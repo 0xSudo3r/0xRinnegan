@@ -33,6 +33,25 @@ jobs:
           RESPONSE=$(curl -s -H "Authorization: Bot $DISCORD_TOKEN" \
             "https://discord.com/api/v10/channels/$CHANNEL_ID/messages?limit=10")
           
+          # Debug: Check if we got valid JSON
+          echo "Discord API Response:"
+          echo "$RESPONSE" | jq '.' 2>/dev/null || echo "ERROR: Invalid JSON response: $RESPONSE"
+          
+          # Check if response is an array (valid) or error message
+          IS_ARRAY=$(echo "$RESPONSE" | jq -r 'if type == "array" then "true" else "false" end' 2>/dev/null || echo "false")
+          
+          if [ "$IS_ARRAY" != "true" ]; then
+            echo "❌ Discord API Error. Possible issues:"
+            echo "   - Invalid bot token"
+            echo "   - Invalid channel ID"
+            echo "   - Bot doesn't have permissions"
+            echo "   - Bot not in server"
+            echo ""
+            echo "Response received: $RESPONSE"
+            echo "has_domain=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
           # Find new domain submissions
           NEW_DOMAIN=$(echo "$RESPONSE" | jq -r --arg LAST_ID "$LAST_ID" '
             [.[] | select(.id > $LAST_ID) | select(.content | test("^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\\.[a-zA-Z]{2,}$"))] 
@@ -45,6 +64,10 @@ jobs:
             MESSAGE_ID=$(echo "$NEW_DOMAIN" | jq -r '.id')
             AUTHOR=$(echo "$NEW_DOMAIN" | jq -r '.author')
             
+            echo "✅ Found new domain: $DOMAIN"
+            echo "   Message ID: $MESSAGE_ID"
+            echo "   Submitted by: $AUTHOR"
+            
             echo "domain=$DOMAIN" >> $GITHUB_OUTPUT
             echo "message_id=$MESSAGE_ID" >> $GITHUB_OUTPUT
             echo "author=$AUTHOR" >> $GITHUB_OUTPUT
@@ -53,6 +76,7 @@ jobs:
             # Save this message ID as processed
             echo "$MESSAGE_ID" > last_message_id.txt
           else
+            echo "ℹ️ No new domains found"
             echo "has_domain=false" >> $GITHUB_OUTPUT
           fi
       
