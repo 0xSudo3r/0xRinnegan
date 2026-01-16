@@ -1,0 +1,285 @@
+#!/bin/bash
+
+# Create results directory structure
+mkdir -p docs/scans
+
+# Read all previous scans
+SCANS_JSON="[]"
+if [ -f docs/scans.json ]; then
+  SCANS_JSON=$(cat docs/scans.json)
+fi
+
+# Add new scan to JSON
+NEW_SCAN=$(jq -n \
+  --arg domain "$DOMAIN" \
+  --arg timestamp "$TIMESTAMP" \
+  --arg count "$COUNT" \
+  --arg author "$AUTHOR" \
+  '{domain: $domain, timestamp: $timestamp, count: ($count | tonumber), author: $author}')
+
+echo "$SCANS_JSON" | jq --argjson new "$NEW_SCAN" '. += [$new]' > docs/scans.json
+
+# Copy subdomain results
+cp results/subdomains_${DOMAIN}.txt docs/scans/subdomains_${DOMAIN}.txt
+
+# Generate main dashboard HTML
+cat > docs/index.html << 'HTMLEOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recon Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0e27;
+            color: #e4e4e7;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+        }
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1.2em;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .stat-label {
+            opacity: 0.7;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .scans-section {
+            background: #1e1e2e;
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .section-title {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+        .scan-card {
+            background: linear-gradient(135deg, #2d2d44 0%, #1e1e2e 100%);
+            padding: 25px;
+            margin: 15px 0;
+            border-radius: 12px;
+            border-left: 4px solid #4ade80;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .scan-card:hover {
+            transform: translateX(10px);
+            box-shadow: 0 10px 30px rgba(74, 222, 128, 0.2);
+        }
+        .scan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .scan-domain {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+        }
+        .scan-count {
+            background: #4ade80;
+            color: #0a0e27;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .scan-meta {
+            display: flex;
+            gap: 30px;
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
+        .scan-meta span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .subdomains-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .subdomains-container.open {
+            max-height: 500px;
+            margin-top: 20px;
+            overflow-y: auto;
+        }
+        .subdomain-item {
+            background: rgba(255,255,255,0.05);
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.5;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .loading::after {
+            content: '...';
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Recon Dashboard</h1>
+            <div class="subtitle">Automated Subdomain Reconnaissance</div>
+        </header>
+        
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-label">Total Scans</div>
+                <div class="stat-value" id="totalScans">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Subdomains</div>
+                <div class="stat-value" id="totalSubdomains">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Latest Scan</div>
+                <div class="stat-value" id="latestScan" style="font-size: 1.2em;">-</div>
+            </div>
+        </div>
+        
+        <div class="scans-section">
+            <h2 class="section-title">📋 Reconnaissance Results</h2>
+            <div id="scansList">
+                <div class="loading">Loading scans</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadScans() {
+            try {
+                const response = await fetch('scans.json');
+                const scans = await response.json();
+                
+                // Update stats
+                document.getElementById('totalScans').textContent = scans.length;
+                document.getElementById('totalSubdomains').textContent = 
+                    scans.reduce((sum, scan) => sum + scan.count, 0);
+                
+                if (scans.length > 0) {
+                    const latest = scans[scans.length - 1];
+                    document.getElementById('latestScan').textContent = latest.domain;
+                }
+                
+                // Generate scan cards (reverse order - newest first)
+                const scansList = document.getElementById('scansList');
+                scansList.innerHTML = '';
+                
+                scans.reverse().forEach((scan, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'scan-card';
+                    card.innerHTML = `
+                        <div class="scan-header">
+                            <div class="scan-domain">${scan.domain}</div>
+                            <div class="scan-count">${scan.count} subdomains</div>
+                        </div>
+                        <div class="scan-meta">
+                            <span>🕐 ${scan.timestamp}</span>
+                            <span>👤 ${scan.author}</span>
+                        </div>
+                        <div class="subdomains-container" id="subs-${index}"></div>
+                    `;
+                    
+                    card.addEventListener('click', () => toggleSubdomains(scan.domain, index));
+                    scansList.appendChild(card);
+                });
+                
+            } catch (error) {
+                console.error('Error loading scans:', error);
+                document.getElementById('scansList').innerHTML = 
+                    '<div style="text-align: center; padding: 40px; opacity: 0.5;">No scans yet</div>';
+            }
+        }
+        
+        async function toggleSubdomains(domain, index) {
+            const container = document.getElementById(`subs-${index}`);
+            
+            if (container.classList.contains('open')) {
+                container.classList.remove('open');
+                return;
+            }
+            
+            if (container.innerHTML === '') {
+                try {
+                    const response = await fetch(`scans/subdomains_${domain}.txt`);
+                    const text = await response.text();
+                    const subdomains = text.trim().split('\n');
+                    
+                    container.innerHTML = subdomains
+                        .map(sub => `<div class="subdomain-item">${sub}</div>`)
+                        .join('');
+                } catch (error) {
+                    container.innerHTML = '<div class="subdomain-item">Error loading subdomains</div>';
+                }
+            }
+            
+            container.classList.add('open');
+        }
+        
+        loadScans();
+    </script>
+</body>
+</html>
+HTMLEOF
+
+echo "✅ Website updated"

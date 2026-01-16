@@ -1,0 +1,165 @@
+name: Discord Recon Monitor
+
+on:
+  schedule:
+    # Check Discord every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Manual trigger for testing
+
+jobs:
+  check-and-run:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Check Discord for new domains
+        id: check_discord
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          CHANNEL_ID: ${{ secrets.RECON_SUBMIT_CHANNEL_ID }}
+        run: |
+          # Get last processed message ID
+          LAST_ID=""
+          if [ -f "last_message_id.txt" ]; then
+            LAST_ID=$(cat last_message_id.txt)
+          fi
+          
+          # Fetch recent messages from Discord
+          RESPONSE=$(curl -s -H "Authorization: Bot $DISCORD_TOKEN" \
+            "https://discord.com/api/v10/channels/$CHANNEL_ID/messages?limit=10")
+          
+          # Find new domain submissions
+          NEW_DOMAIN=$(echo "$RESPONSE" | jq -r --arg LAST_ID "$LAST_ID" '
+            [.[] | select(.id > $LAST_ID) | select(.content | test("^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\\.[a-zA-Z]{2,}$"))] 
+            | if length > 0 then .[0] else empty end
+            | {id: .id, content: .content, author: .author.username}
+          ')
+          
+          if [ -n "$NEW_DOMAIN" ] && [ "$NEW_DOMAIN" != "null" ]; then
+            DOMAIN=$(echo "$NEW_DOMAIN" | jq -r '.content')
+            MESSAGE_ID=$(echo "$NEW_DOMAIN" | jq -r '.id')
+            AUTHOR=$(echo "$NEW_DOMAIN" | jq -r '.author')
+            
+            echo "domain=$DOMAIN" >> $GITHUB_OUTPUT
+            echo "message_id=$MESSAGE_ID" >> $GITHUB_OUTPUT
+            echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+            echo "has_domain=true" >> $GITHUB_OUTPUT
+            
+            # Save this message ID as processed
+            echo "$MESSAGE_ID" > last_message_id.txt
+          else
+            echo "has_domain=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: React to Discord message
+        if: steps.check_discord.outputs.has_domain == 'true'
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          CHANNEL_ID: ${{ secrets.RECON_SUBMIT_CHANNEL_ID }}
+          MESSAGE_ID: ${{ steps.check_discord.outputs.message_id }}
+        run: |
+          # Add rocket emoji reaction
+          curl -X PUT \
+            -H "Authorization: Bot $DISCORD_TOKEN" \
+            "https://discord.com/api/v10/channels/$CHANNEL_ID/messages/$MESSAGE_ID/reactions/%F0%9F%9A%80/@me"
+      
+      - name: Install recon tools
+        if: steps.check_discord.outputs.has_domain == 'true'
+        run: |
+          # Install Go
+          wget -q https://go.dev/dl/go1.21.5.linux-amd64.tar.gz
+          sudo tar -C /usr/local -xzf go1.21.5.linux-amd64.tar.gz
+          echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> $GITHUB_ENV
+          export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
+          
+          # Install subfinder
+          go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+          
+          # Install notify
+          go install -v github.com/projectdiscovery/notify/cmd/notify@latest
+      
+      - name: Run subfinder
+        if: steps.check_discord.outputs.has_domain == 'true'
+        id: subfinder
+        run: |
+          export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
+          
+          DOMAIN="${{ steps.check_discord.outputs.domain }}"
+          TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+          OUTPUT_DIR="results"
+          
+          mkdir -p $OUTPUT_DIR
+          
+          echo "🔍 Running subfinder for $DOMAIN..."
+          
+          # Run subfinder
+          subfinder -d $DOMAIN -all -recursive -o $OUTPUT_DIR/temp_subdomains.txt -silent
+          
+          # Sort and deduplicate
+          sort -u $OUTPUT_DIR/temp_subdomains.txt > $OUTPUT_DIR/subdomains_${DOMAIN}.txt
+          rm $OUTPUT_DIR/temp_subdomains.txt
+          
+          # Count results
+          COUNT=$(wc -l < $OUTPUT_DIR/subdomains_${DOMAIN}.txt || echo "0")
+          
+          echo "✅ Found $COUNT subdomains"
+          
+          echo "domain=$DOMAIN" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+      
+      - name: Generate/Update website
+        if: steps.check_discord.outputs.has_domain == 'true'
+        run: |
+          chmod +x scripts/generate-website.sh
+          DOMAIN="${{ steps.subfinder.outputs.domain }}" \
+          TIMESTAMP="${{ steps.subfinder.outputs.timestamp }}" \
+          COUNT="${{ steps.subfinder.outputs.count }}" \
+          AUTHOR="${{ steps.check_discord.outputs.author }}" \
+          ./scripts/generate-website.sh
+      
+      - name: Commit changes
+        if: steps.check_discord.outputs.has_domain == 'true'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add docs/ results/ last_message_id.txt
+          git diff --quiet && git diff --staged --quiet || git commit -m "Add recon results for ${{ steps.subfinder.outputs.domain }}"
+          git push
+      
+      - name: Deploy to GitHub Pages
+        if: steps.check_discord.outputs.has_domain == 'true'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          force_orphan: true
+      
+      - name: Notify Discord
+        if: steps.check_discord.outputs.has_domain == 'true'
+        run: |
+          chmod +x scripts/notify-discord.sh
+          DOMAIN="${{ steps.subfinder.outputs.domain }}" \
+          COUNT="${{ steps.subfinder.outputs.count }}" \
+          TIMESTAMP="${{ steps.subfinder.outputs.timestamp }}" \
+          DISCORD_WEBHOOK="${{ secrets.DISCORD_WEBHOOK_URL }}" \
+          REPO_NAME="${{ github.event.repository.name }}" \
+          REPO_OWNER="${{ github.repository_owner }}" \
+          ./scripts/notify-discord.sh
+      
+      - name: Mark as complete
+        if: steps.check_discord.outputs.has_domain == 'true'
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          CHANNEL_ID: ${{ secrets.RECON_SUBMIT_CHANNEL_ID }}
+          MESSAGE_ID: ${{ steps.check_discord.outputs.message_id }}
+        run: |
+          # Add checkmark emoji reaction
+          curl -X PUT \
+            -H "Authorization: Bot $DISCORD_TOKEN" \
+            "https://discord.com/api/v10/channels/$CHANNEL_ID/messages/$MESSAGE_ID/reactions/%E2%9C%85/@me"
