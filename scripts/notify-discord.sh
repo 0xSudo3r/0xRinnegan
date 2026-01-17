@@ -10,6 +10,7 @@ discord:
     discord_username: "0xM4dara's 3ye"
     discord_format: "{{data}}"
     discord_webhook_url: "$DISCORD_WEBHOOK"
+    discord_avatar_url: "https://cdn.discordapp.com/attachments/1462106915764047995/1462107890625286247/discord-bot-icon.jpg?ex=696cfd95&is=696bac15&hm=c3b8f526c32b98541ce4db88fed2da7bdfd372a571345d478969f8eb794318e3&"
 EOF
 
 # Build GitHub Pages URL
