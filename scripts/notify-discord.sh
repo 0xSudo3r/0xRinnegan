@@ -22,8 +22,7 @@ MESSAGE="**✅ Recon Complete!**
 ${LATEST_SUBS}
 \`\`\`"
 
-# ⭐ ADD YOUR IMAGE URL HERE ⭐
-AVATAR_URL="https://cdn.discordapp.com/attachments/1462106915764047995/1462107890625286247/discord-bot-icon.jpg?ex=696cfd95&is=696bac15&hm=c3b8f526c32b98541ce4db88fed2da7bdfd372a571345d478969f8eb794318e3&"
+AVATAR_URL="https://cdn.discordapp.com/attachments/1462106915764047995/1462154294995452118/rinnegan.png?ex=696d28cd&is=696bd74d&hm=c56161d8260514c63f9fe699f8bf20e1348918a83fc991ab98b0491d82224e07&"
 
 # Send directly to Discord webhook with avatar
 curl -H "Content-Type: application/json" \
