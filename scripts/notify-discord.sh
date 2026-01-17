@@ -26,7 +26,10 @@ cat > notification.txt << EOF
 
 🔗 **[View Full Results](${PAGES_URL})**
 
-\`\`\`\nLatest subdomains discovered:\n$(head -10 results/subdomains_${DOMAIN}.txt)\n\`\`\`
+```
+Latest subdomains discovered:
+$(head -10 results/subdomains_${DOMAIN}.txt)
+```
 EOF
 
 # Send notification using notify
