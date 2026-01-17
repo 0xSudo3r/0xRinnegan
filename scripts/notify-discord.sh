@@ -8,7 +8,7 @@ cat > ~/.config/notify/provider-config.yaml << EOF
 discord:
   - id: "recon-results"
     discord_channel: "recon-results"
-    discord_username: "Recon Bot"
+    discord_username: "0xM4dara's 3ye"
     discord_format: "{{data}}"
     discord_webhook_url: "$DISCORD_WEBHOOK"
 EOF
@@ -26,10 +26,7 @@ cat > notification.txt << EOF
 
 🔗 **[View Full Results](${PAGES_URL})**
 
-\`\`\`
-Latest subdomains discovered:
-$(head -10 results/subdomains_${DOMAIN}.txt)
-\`\`\`
+\`\`\`\nLatest subdomains discovered:\n$(head -10 results/subdomains_${DOMAIN}.txt)\n\`\`\`
 EOF
 
 # Send notification using notify
