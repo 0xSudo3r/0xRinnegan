@@ -10,7 +10,6 @@ discord:
     discord_username: "0xM4dara's 3ye"
     discord_format: "{{data}}"
     discord_webhook_url: "$DISCORD_WEBHOOK"
-    discord_avatar_url: "https://c4.wallpaperflare.com/wallpaper/768/209/69/uchiha-madara-naruto-shippuuden-rinnegan-anime-wallpaper-preview.jpg"
 EOF
 
 # Build GitHub Pages URL
@@ -29,10 +28,8 @@ cat > notification.txt << ENDOFMSG
 
 🔗 **[View Full Results](${PAGES_URL})**
 
-\`\`\`
-Latest subdomains discovered:
+**Latest subdomains discovered:**
 ${LATEST_SUBS}
-\`\`\`
 ENDOFMSG
 
 # Send notification using notify
