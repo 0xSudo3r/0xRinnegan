@@ -16,8 +16,9 @@ MESSAGE="**✅ Recon Complete!**
 
 🔗 **[View Full Results](${PAGES_URL})**
 
+**Latest subdomains discovered:**
+
 \`\`\`
-Latest subdomains discovered:
 ${LATEST_SUBS}
 \`\`\`"
 
