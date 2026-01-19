@@ -1,0 +1,80 @@
+[
+  {
+    "domain": "att.com",
+    "timestamp": "2026-01-16_22-00-39",
+    "count": 3275,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "google.com",
+    "timestamp": "2026-01-16_22-11-06",
+    "count": 690,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "claude.ai",
+    "timestamp": "2026-01-17_03-44-49",
+    "count": 11,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "x.com",
+    "timestamp": "2026-01-17_13-07-15",
+    "count": 149,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "github.com",
+    "timestamp": "2026-01-17_13-37-28",
+    "count": 372,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "youtube.com",
+    "timestamp": "2026-01-17_13-49-22",
+    "count": 501,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "okta.com",
+    "timestamp": "2026-01-17_14-49-30",
+    "count": 500,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "spotify.com",
+    "timestamp": "2026-01-17_14-58-05",
+    "count": 169,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "netriders.academy",
+    "timestamp": "2026-01-17_15-15-44",
+    "count": 22,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "chatgpt.com",
+    "timestamp": "2026-01-17_15-38-48",
+    "count": 49,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "imgur.com",
+    "timestamp": "2026-01-17_18-28-01",
+    "count": 109,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "wallpaperflare.com",
+    "timestamp": "2026-01-17_18-42-06",
+    "count": 5,
+    "author": "0xsudo3r"
+  },
+  {
+    "domain": "att.com",
+    "timestamp": "2026-01-19_21-45-33",
+    "count": 3275,
+    "author": "0xsudo3r"
+  }
+]
